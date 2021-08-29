@@ -7,6 +7,7 @@
 - Adobe
 - December 21, 2012
 
-> 本翻译自:rtmp_specification_1.0
+- 本翻译自:rtmp_specification_1.0.pdf
+- 作者 : haorui wang
 
 

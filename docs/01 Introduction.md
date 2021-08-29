@@ -5,3 +5,6 @@ Adobe的实时消息协议（RTMP）通过可靠的流传输（如TCP[RFC0793]�
 本备忘录描述了实时消息协议的语法和操作。
 
 ## 术语
+本备忘录中的关键词“MUST”、“MUST NOT”、“REQUIRED”、“SHALL”、“SHALL NOT”、“SHOULD”、“SHOULD NOT”、“RECOMMENDED”、“NOT RECOMMENDED”、“MAY”和“OPTIONAL”应按照[RFC2119]中的说明进行解释。
+
+
