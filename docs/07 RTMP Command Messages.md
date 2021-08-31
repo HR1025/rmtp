@@ -750,6 +750,169 @@ NetStream发送receiveAudio消息，通知服务器是否向客户端发送音�
 #### 接收视频(receiveVideo)
 NetStream发送receiveVideo消息，通知服务器是否将视频发送到客户端。
 
+从客户端到服务器的命令结构如下：
+```
+                 +--------------+----------+----------------------------------------+
+                 | Field Name   | Type     |          Description                   |
+                 +--------------+----------+----------------------------------------+
+                 | Command Name | String   | Name of the command, set to            |
+                 |              |          | "receiveVideo".                        |
+                 +--------------+----------+----------------------------------------+
+                 | Transaction  | Number   | Transaction ID set to 0.               |
+                 | ID           |          |                                        |
+                 +--------------+----------+----------------------------------------+
+                 | Command      | Null     | Command information object does not    |
+                 | Object       |          | exist. Set to null type.               |
+                 +--------------+----------+----------------------------------------+
+                 | Bool Flag    | Boolean  | true or false to indicate whether to   |
+                 |              |          | receive video or not.                  |
+                 +--------------+----------+----------------------------------------+
+```
+
+如果发送receiveVideo命令时bool标志设置为false，则服务器不发送任何响应。如果此标志设置为true，服务器将以状态消息 NetStream.Seek.Notify 和 NetStream.Play.Start 响应。
+
+#### 发布(publish)
+客户端发送publish命令将命名流发布到服务器。使用此名称，任何客户端都可以播放此流并接收已发布的音频、视频和数据消息。
+
+从客户端到服务器的命令结构如下：
+```
+                 +--------------+----------+----------------------------------------+
+                 | Field Name   | Type     | Description                            |
+                 +--------------+----------+----------------------------------------+
+                 | Command Name | String   | Name of the command, set to "publish". |
+                 +--------------+----------+----------------------------------------+
+                 | Transaction  | Number   | Transaction ID set to 0.               |
+                 | ID           |          |                                        |
+                 +--------------+----------+----------------------------------------+
+                 | Command      | Null     | Command information object does not    |
+                 | Object       |          | exist. Set to null type.               |     
+                 +--------------+----------+----------------------------------------+
+                 | Publishing   | String   | Name with which the stream is          |
+                 | Name         |          | published.                             |
+                 +--------------+----------+----------------------------------------+
+                 | Publishing   | String   | Type of publishing. Set to "live",     |
+                 | Type         |          | "record", or "append".                 |
+                 |              |          | record: The stream is published and the|
+                 |              |          | data is recorded to a new file.The file|
+                 |              |          | is stored on the server in a           |
+                 |              |          | subdirectory within the directory that |
+                 |              |          | contains the server application. If the|
+                 |              |          | file already exists, it is overwritten.|
+                 |              |          | append: The stream is published and the|
+                 |              |          | data is appended to a file. If no file |
+                 |              |          | is found, it is created.               |
+                 |              |          | live: Live data is published without   |
+                 |              |          | recording it in a file.                |
+                 +--------------+----------+----------------------------------------+
+```
+服务器用onStatus命令响应，以标记发布的开始。
+
+#### 定位(seek)
+客户端发送seek命令以查找媒体文件或播放列表中的偏移量（以毫秒为单位）。
+
+从客户端到服务器的命令结构如下：
+```
+                 +--------------+----------+----------------------------------------+
+                 | Field Name   | Type     |            Description                 |
+                 +--------------+----------+----------------------------------------+
+                 | Command Name | String   | Name of the command, set to "seek".    |
+                 +--------------+----------+----------------------------------------+
+                 | Transaction  | Number   | Transaction ID set to 0.               |
+                 | ID           |          |                                        |
+                 +--------------+----------+----------------------------------------+
+                 | Command      | Null     | There is no command information object |
+                 | Object       |          | for this command. Set to null type.    |
+                 +--------------+----------+----------------------------------------+
+                 | milliSeconds | Number   | Number of milliseconds to seek into    |
+                 |              |          | the playlist.                          |
+                 +--------------+----------+----------------------------------------+
+```
+当搜索成功时，服务器发送状态消息 NetStream.Seek.Notify 。如果失败，它将返回一条 _error 消息。
+
+#### 暂停(pause)
+客户端发送pause命令，通知服务器暂停或开始播放。
+
+从客户端到服务器的命令结构如下：
+```
+                 +--------------+----------+----------------------------------------+
+                 | Field Name   | Type     |             Description                |
+                 +--------------+----------+----------------------------------------+
+                 | Command Name | String   | Name of the command, set to "pause".   |
+                 +--------------+----------+----------------------------------------+
+                 | Transaction  | Number   | There is no transaction ID for this    |
+                 | ID           |          | command. Set to 0.                     |
+                 +--------------+----------+----------------------------------------+
+                 | Command      | Null     | Command information object does not    |
+                 | Object       |          | exist. Set to null type.               |
+                 +--------------+----------+----------------------------------------+
+                 |Pause/Unpause | Boolean  | true or false, to indicate pausing or  |
+                 | Flag         |          | resuming play                          |
+                 +--------------+----------+----------------------------------------+
+                 | milliSeconds | Number   | Number of milliseconds at which the    |
+                 |              |          | the stream is paused or play resumed.  |
+                 |              |          | This is the current stream time at the |
+                 |              |          | Client when stream was paused. When the|
+                 |              |          | playback is resumed, the server will   |
+                 |              |          | only send messages with timestamps     |
+                 |              |          | greater than this value.               |
+                 +--------------+----------+----------------------------------------+
+```
+当流暂停时，服务器发送状态消息NetStream.Pause.Notify。NetStream.Unpause.Notify在取消暂停中的流时发送。如果失败，它将返回一条 _error 消息。
+
+## 消息交换示例(Message Exchange Examples)
+下面是几个例子来解释使用RTMP进行消息交换。
+
+### 发布录制的视频(Publish Recorded Video)
+此示例说明了发布者如何发布流，然后将视频流传输到服务器。其他客户端可以订阅此已发布流并播放视频。
+```
+          +--------------------+                     +-----------+
+          | Publisher Client   |      |              | Server    |
+          +----------+---------+      |              +-----+-----+
+                     |         Handshaking Done            |
+                     |                |                    |
+                     |                |                    |
+          ---+----   |----- Command Message(connect) ----->|
+             |       |                                     | 
+             |       |<----- Window Acknowledge Size ------|
+     Connect |       |                                     |
+             |       |<-------Set Peer BandWidth ----------|
+             |       |                                     |
+             |       |------ Window Acknowledge Size ----->|
+             |       |                                     |
+             |       |<------User Control(StreamBegin)-----|
+             |       |                                     |
+          ---+----   |<---------Command Message -----------|
+                     |     (_result- connect response)     |
+                     |                                     |
+         ---+----    |--- Command Message(createStream)--->|
+     Create |        |                                     |
+     Stream |        |                                     |
+         ---+----    |<------- Command Message ------------|
+                     |    (_result- createStream response) |
+                     |                                     |
+         ---+----    |---- Command Message(publish) ------>|
+            |        |                                     |
+            |        |<------User Control(StreamBegin)-----|
+            |        |                                     |
+            |        |-----Data Message (Metadata)-------->|
+            |        |                                     |
+  Publishing|        |------------ Audio Data ------------>|
+  Content   |        |                                     |
+            |        |------------ SetChunkSize ---------->|
+            |        |                                     |
+            |        |<----------Command Message ----------|
+            |        |      (_result- publish result)      |
+            |        |                                     |
+            |        |------------- Video Data ----------->|
+            |        |                  |                  |
+            |        |                  |                  |
+                     |      Until the stream is complete   |
+                     |                  |                  |
+                Message flow in publishing a video stream
+```
+
+
+
 
 
 
