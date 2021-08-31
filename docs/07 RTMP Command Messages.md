@@ -184,19 +184,19 @@ NetConnection管理客户端应用程序和服务器之间的双向连接。此�
 
 从客户端到服务器的命令结构如下：
 ```
- +----------------+---------+---------------------------------------+
- |   Field Name   |   Type  |                Description            |
- +--------------- +---------+---------------------------------------+
- |   Command Name |  String | Name of the command. Set to "connect".|
- +----------------+---------+---------------------------------------+
- | Transaction ID | Number  | Always set to 1.                      |
- +----------------+---------+---------------------------------------+
- | Command Object | Object  | Command information object which has  |
- |                |         | the name-value pairs.                 |
- +----------------+---------+---------------------------------------+
- | Optional User  | Object  | Any optional information              |
- | Arguments      |         |                                       |
- +----------------+---------+---------------------------------------+
+                 +----------------+---------+---------------------------------------+
+                 |   Field Name   |   Type  |                Description            |
+                 +--------------- +---------+---------------------------------------+
+                 |   Command Name |  String | Name of the command. Set to "connect".|
+                 +----------------+---------+---------------------------------------+
+                 | Transaction ID | Number  | Always set to 1.                      |
+                 +----------------+---------+---------------------------------------+
+                 | Command Object | Object  | Command information object which has  |
+                 |                |         | the name-value pairs.                 |
+                 +----------------+---------+---------------------------------------+
+                 | Optional User  | Object  | Any optional information              |
+                 | Arguments      |         |                                       |
+                 +----------------+---------+---------------------------------------+
 ``` 
 以下是connect命令的命令对象中使用的名称-值对的说明:
 ```
@@ -307,13 +307,13 @@ videoCodecs属性的标志值：
 ```
 videoFunction属性的标志值：
 ```
- +----------------------+----------------------------+--------------+
- |    Function Flag     |             Usage          |     Value    |
- +----------------------+----------------------------+--------------+
- | SUPPORT_VID_CLIENT   | Indicates that the client  | 1            |
- | _SEEK                | can perform frame-accurate |              |
- |                      | seeks.                     |              |
- +----------------------+----------------------------+--------------+
+                 +----------------------+----------------------------+--------------+
+                 |    Function Flag     |             Usage          |     Value    |
+                 +----------------------+----------------------------+--------------+
+                 | SUPPORT_VID_CLIENT   | Indicates that the client  | 1            |
+                 | _SEEK                | can perform frame-accurate |              |
+                 |                      | seeks.                     |              |
+                 +----------------------+----------------------------+--------------+
 ```
 对象编码属性的值：
 ```
@@ -350,6 +350,170 @@ videoFunction属性的标志值：
                  |              |          | among such information.                |
                  +--------------+----------+----------------------------------------+
 ```
+
+
+```
+                 +--------------+                              +-------------+
+                 |    Client    |            |                 |    Server   |
+                 +------+-------+            |                 +------+------+
+                        |            Handshaking done                 |
+                        |                    |                        |
+                        |                    |                        |
+                        |                    |                        |
+                        |                    |                        |
+                        |----------- Command Message(connect) ------->|
+                        |                                             |
+                        |<------- Window Acknowledgement Size --------|
+                        |                                             |
+                        |<----------- Set Peer Bandwidth -------------|
+                        |                                             |
+                        |-------- Window Acknowledgement Size ------->|
+                        |                                             |
+                        |<------ User Control Message(StreamBegin) ---|
+                        |                                             |
+                        |<------------ Command Message ---------------|
+                        |        (_result- connect response)          |
+                        |                                             |
+                             Message flow in the connect command
+```
+执行命令期间的消息流为：
+1. 客户端向服务器发送connect命令，请求与服务器应用程序实例连接。
+2. 在接收到connect命令后，服务器向客户端发送协议消息(protocol message)“窗口确认大小(Window Acknowledgement Size)”。服务器还连接到connect命令中提到的应用程序。
+3. 服务器向客户端发送协议消息(protocol message)“设置对等带宽(Set Peer Bandwidth)”。
+4. 在处理协议消息“设置对等带宽”后，客户端向服务器发送协议消息(protocol message)“窗口确认大小(Window Acknowledgement Size)”。
+5. 服务器将用户控制消息（StreamBegin）类型(属于另一个协议信息)发送到客户端。
+6. 服务器发送结果命令消息，通知客户端连接状态(connection status)（成功/失败）。该命令指定事务ID(transaction ID)（connect命令始终等于1）。该消息还指定属性(properties)，例如闪存媒体服务器版本(Flash Media Server version)（字符串, string）。此外，它还指定了其他与连接响应相关的信息，如级别(level)（字符串, string）、代码(code)（字符串, string）、描述(description)（字符串, string）、对象编码(objectencoding)（编号, number）等。
+
+
+#### 调用(Call)
+NetConnection对象的调用(call)方法使接收端运行远程过程调用（remote procedure calls, RPC）。被调用的RPC名称作为参数传递给call命令。
+
+从发送方到接收方的命令结构如下：
+```
+                 +--------------+----------+----------------------------------------+
+                 |  Field Name  | Type     |              Description               |
+                 +--------------+----------+----------------------------------------+
+                 | Procedure    | String   | Name of the remote procedure that is   |
+                 | Name         |          | called.                                |
+                 +--------------+----------+----------------------------------------+
+                 | Transaction  | Number   | If a response is expected we give a    |
+                 |              |          | transaction Id. Else we pass a value of|
+                 | ID           |          | 0                                      |
+                 +--------------+----------+----------------------------------------+
+                 | Command      | Object   | If there exists any command info this  |
+                 | Object       |          | is set, else this is set to null type. |
+                 +--------------+----------+----------------------------------------+
+                 | Optional     | Object   | Any optional arguments to be provided  |
+                 | Arguments    |          |                                        |
+                 +--------------+----------+----------------------------------------+
+```
+响应的命令结构如下所示：
+```
+                 +--------------+----------+----------------------------------------+
+                 | Field Name   | Type     | Description                            |
+                 +--------------+----------+----------------------------------------+
+                 | Command Name | String   | Name of the command.                   |
+                 |              |          |                                        |
+                 +--------------+----------+----------------------------------------+
+                 | Transaction  | Number   | ID of the command, to which the        |
+                 | ID           |          | response belongs.                      |
+                 +--------------+----------+----------------------------------------+
+                 | Command      | Object   | If there exists any command info this  |
+                 | Object       |          | is set, else this is set to null type. |
+                 +--------------+----------+----------------------------------------+
+                 | Response     | Object   | Response from the method that was      |
+                 |              |          | called.                                |
+                 +------------------------------------------------------------------+
+```
+
+#### 创建流(createStream)
+客户端将此命令发送到服务器，以创建用于消息通信的逻辑通道。音频、视频和元数据的发布通过使用createStream命令创建的流通道执行。
+
+NetConnection是默认的通信通道，其流ID为0。协议和一些命令消息（包括createStream）使用默认的通信通道。
+
+从客户端到服务器的命令结构如下：
+```
+                 +--------------+----------+----------------------------------------+
+                 | Field Name   | Type     |            Description                 |
+                 +--------------+----------+----------------------------------------+
+                 | Command Name | String   | Name of the command. Set to            |
+                 |              |          | "createStream".                        |
+                 +--------------+----------+----------------------------------------+
+                 | Transaction  | Number   | Transaction ID of the command.         |
+                 | ID           |          |                                        |
+                 +--------------+----------+----------------------------------------+
+                 | Command      | Object   | If there exists any command info this  |
+                 | Object       |          | is set, else this is set to null type. |
+                 +--------------+----------+----------------------------------------+
+```
+从服务器到客户端的命令结构如下：
+```
+             +--------------+----------+----------------------------------------+
+             | Field Name   | Type     |              Description               |
+             +--------------+----------+----------------------------------------+
+             | Command Name | String   | _result or _error; indicates whether   |
+             |              |          | the response is result or error.       |
+             +--------------+----------+----------------------------------------+
+             | Transaction  | Number   | ID of the command that response belongs|
+             | ID           |          | to.                                    |
+             +--------------+----------+----------------------------------------+
+             | Command      | Object   | If there exists any command info this  |
+             | Object       |          | is set, else this is set to null type. |
+             +--------------+----------+----------------------------------------+
+             | Stream       | Number   | The return value is either a stream ID |
+             | ID           |          | or an error information object.        |
+             +--------------+----------+----------------------------------------+
+```
+
+### 网络流命令(NetStream命令)
+NetStream定义了一个通道，通过该通道，流式音频(audio)、视频(video)和数据消息(data messages)可以通过连接客户端和服务器的网络连接进行传输。NetConnection对象可以支持多个NetStream以支持多个数据流。
+
+客户端可以通过NetStream将以下命令发送到服务器：
+- play
+- play2
+- deleteStream
+- closeStream
+- receiveAudio
+- receiveVideo
+- publish
+- seek
+- pause
+
+服务器使用“onStatus”命令向客户端发送NetStream状态更新：
+```
+             +--------------+----------+----------------------------------------+
+             | Field Name   | Type     |              Description               |
+             +--------------+----------+----------------------------------------+
+             | Command Name | String   | The command name "onStatus".           |
+             +--------------+----------+----------------------------------------+
+             | Transaction  | Number   | Transaction ID set to 0.               |
+             | ID           |          |                                        |
+             +--------------+----------+----------------------------------------+
+             | Command      | Null     | There is no command object for         |
+             | Object       |          | onStatus messages.                     |
+             +--------------+----------+----------------------------------------+
+             | Info Object  | Object   | An AMF object having at least the      |
+             |              |          | following three properties: "level"    |
+             |              |          | (String): the level for this message,  |
+             |              |          | one of "warning", "status", or "error";|
+             |              |          | "code" (String): the message code, for |
+             |              |          | example "NetStream.Play.Start"; and    | 
+             |              |          | "description" (String): a human-       |
+             |              |          | readable description of the message.   |
+             |              |          | The Info object MAY contain other      |
+             |              |          | properties as appropriate to the code. |
+             +--------------+----------+----------------------------------------+
+                       Format of NetStream status message commands.
+```
+
+
+
+
+
+
+
+
+
 
 
 
