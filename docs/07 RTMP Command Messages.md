@@ -724,7 +724,7 @@ NetStream在NetStream对象被销毁时发送deleteStream命令。
 ```
 服务器不发送任何响应。
 
-#### 接受音频(receiveAudio)
+#### 接收音频(receiveAudio)
 NetStream发送receiveAudio消息，通知服务器是否向客户端发送音频。
 
 从客户端到服务器的命令结构如下：
@@ -745,6 +745,10 @@ NetStream发送receiveAudio消息，通知服务器是否向客户端发送音�
                  |              |          | receive audio or not.                  |
                  +--------------+----------+----------------------------------------+
 ```
+如果在发送receiveAudio命令时bool标志设置为false，则服务器不发送任何响应。如果此标志设置为true，服务器将以状态消息 NetStream.Seek.Notify 和 NetStream.Play.Start 响应。
+
+#### 接收视频(receiveVideo)
+NetStream发送receiveVideo消息，通知服务器是否将视频发送到客户端。
 
 
 
