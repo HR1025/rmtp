@@ -910,6 +910,67 @@ NetStream发送receiveVideo消息，通知服务器是否将视频发送到客�
                      |                  |                  |
                 Message flow in publishing a video stream
 ```
+### 广播共享对象消息(Broadcast a Shared Object Message)
+此示例演示了在创建和更改共享对象期间交换的消息。它还说明了共享对象消息广播的过程。
+```
+                     +----------+                 +----------+
+                     | Client   |       |         | Server   |
+                     +-----+----+       |         +-----+----+
+                     |     Handshaking and Application  |
+                     |           connect done           |
+                     |                  |               |
+                     |                  |               |
+                     |                  |               |
+                     |                  |               |
+ Create and ---+---- |---- Shared Object Event(Use)---->|
+ connect       |     |                                  |
+ Shared Object |     |                                  |
+            ---+---- |<---- Shared Object Event---------|
+                     |        (UseSuccess,Clear)        |
+                     |                                  |
+            ---+---- |------ Shared Object Event ------>|
+ Shared object |     |         (RequestChange)          |
+  Set Property |     |                                  |
+            ---+---- |<------ Shared Object Event ------|
+                     |              (Success)           |
+                     |                                  |
+            ---+---- |------- Shared Object Event ----->|
+  Shared object|     |             (SendMessage)        |
+  Message      |     |                                  |
+  Broadcast ---+---- |<------- Shared Object Event -----|
+                     |          (SendMessage)           |
+                     |                                  |
+                     |                                  |
+                         Shared object message broadcast
+```
+
+### 从记录的流发布元数据(Publish Metadata from Recorded Stream)
+
+此示例描述了发布元数据的消息交换。
+```
+       +------------------+                       +---------+
+       | Publisher Client |        |              |    FMS  |
+       +---------+--------+        |              +----+----+
+                 |  Handshaking and Application        |
+                 |  connect done                       |
+                 |                 |                   |
+                 |                 |                   |
+         ---+--- |---Command Messsage(createStream) -->|
+     Create |    |                                     |
+     Stream |    |                                     |
+         ---+--- |<---------Command Message------------|
+                 |    (_result - command response)     |
+                 |                                     |
+         ---+--- |---- Command Message(publish) ------>|
+ Publishing |    |                   |
+ metadata   |    |<------ UserControl(StreamBegin)-----|
+ from file  |    |                                     |
+            |    |-----Data Message (Metadata) ------->|
+                 |                                     |
+                           Publishing metadata
+```
+
+
 
 
 
