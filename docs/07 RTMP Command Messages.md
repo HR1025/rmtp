@@ -448,21 +448,21 @@ NetConnection是默认的通信通道，其流ID为0。协议和一些命令消�
 ```
 从服务器到客户端的命令结构如下：
 ```
-             +--------------+----------+----------------------------------------+
-             | Field Name   | Type     |              Description               |
-             +--------------+----------+----------------------------------------+
-             | Command Name | String   | _result or _error; indicates whether   |
-             |              |          | the response is result or error.       |
-             +--------------+----------+----------------------------------------+
-             | Transaction  | Number   | ID of the command that response belongs|
-             | ID           |          | to.                                    |
-             +--------------+----------+----------------------------------------+
-             | Command      | Object   | If there exists any command info this  |
-             | Object       |          | is set, else this is set to null type. |
-             +--------------+----------+----------------------------------------+
-             | Stream       | Number   | The return value is either a stream ID |
-             | ID           |          | or an error information object.        |
-             +--------------+----------+----------------------------------------+
+                +--------------+----------+----------------------------------------+
+                | Field Name   | Type     |              Description               |
+                +--------------+----------+----------------------------------------+
+                | Command Name | String   | _result or _error; indicates whether   |
+                |              |          | the response is result or error.       |
+                +--------------+----------+----------------------------------------+
+                | Transaction  | Number   | ID of the command that response belongs|
+                | ID           |          | to.                                    |
+                +--------------+----------+----------------------------------------+
+                | Command      | Object   | If there exists any command info this  |
+                | Object       |          | is set, else this is set to null type. |
+                +--------------+----------+----------------------------------------+
+                | Stream       | Number   | The return value is either a stream ID |
+                | ID           |          | or an error information object.        |
+                +--------------+----------+----------------------------------------+
 ```
 
 ### 网络流命令(NetStream命令)
@@ -481,28 +481,28 @@ NetStream定义了一个通道，通过该通道，流式音频(audio)、视频(
 
 服务器使用“onStatus”命令向客户端发送NetStream状态更新：
 ```
-             +--------------+----------+----------------------------------------+
-             | Field Name   | Type     |              Description               |
-             +--------------+----------+----------------------------------------+
-             | Command Name | String   | The command name "onStatus".           |
-             +--------------+----------+----------------------------------------+
-             | Transaction  | Number   | Transaction ID set to 0.               |
-             | ID           |          |                                        |
-             +--------------+----------+----------------------------------------+
-             | Command      | Null     | There is no command object for         |
-             | Object       |          | onStatus messages.                     |
-             +--------------+----------+----------------------------------------+
-             | Info Object  | Object   | An AMF object having at least the      |
-             |              |          | following three properties: "level"    |
-             |              |          | (String): the level for this message,  |
-             |              |          | one of "warning", "status", or "error";|
-             |              |          | "code" (String): the message code, for |
-             |              |          | example "NetStream.Play.Start"; and    | 
-             |              |          | "description" (String): a human-       |
-             |              |          | readable description of the message.   |
-             |              |          | The Info object MAY contain other      |
-             |              |          | properties as appropriate to the code. |
-             +--------------+----------+----------------------------------------+
+                +--------------+----------+----------------------------------------+
+                | Field Name   | Type     |              Description               |
+                +--------------+----------+----------------------------------------+
+                | Command Name | String   | The command name "onStatus".           |
+                +--------------+----------+----------------------------------------+
+                | Transaction  | Number   | Transaction ID set to 0.               |
+                | ID           |          |                                        |
+                +--------------+----------+----------------------------------------+
+                | Command      | Null     | There is no command object for         |
+                | Object       |          | onStatus messages.                     |
+                +--------------+----------+----------------------------------------+
+                | Info Object  | Object   | An AMF object having at least the      |
+                |              |          | following three properties: "level"    |
+                |              |          | (String): the level for this message,  |
+                |              |          | one of "warning", "status", or "error";|
+                |              |          | "code" (String): the message code, for |
+                |              |          | example "NetStream.Play.Start"; and    | 
+                |              |          | "description" (String): a human-       |
+                |              |          | readable description of the message.   |
+                |              |          | The Info object MAY contain other      |
+                |              |          | properties as appropriate to the code. |
+                +--------------+----------+----------------------------------------+
                        Format of NetStream status message commands.
 ```
 
@@ -625,6 +625,127 @@ NetStream定义了一个通道，通过该通道，流式音频(audio)、视频(
                          Keep receiving audio and video stream till finishes
                                  Message flow in the play command
 ```
+
+执行命令期间的消息流为：
+1. 客户端在从服务器接收到createStream命令的结果作为成功后发送play命令。
+2. 在接收到play命令时，服务器发送一条协议消息来设置块大小。
+3. 服务器发送另一个协议消息（user control），指定该消息中的事件“StreamIsRecorded”和流ID。消息在前2个字节中包含事件类型，在后4个字节中包含流ID。
+4. 服务器发送另一个协议消息（user control），指定事件“StreamBegin”，以指示流媒体开始传输到客户端。
+5. 如果客户端发送的播放命令成功，服务器将发送onStatus命令消息 NetStream.Play.Start 以及 NetStream.Play.Reset。只有当客户端发送的播放命令设置了重置标志时，服务器才会发送NetStream.Play.Reset。如果未找到要播放的流，服务器将发送onStatus消息 NetStream.Play.StreamNotFound 。
+
+之后，服务器发送音频和视频数据，客户端播放这些数据。
+
+#### 播放2 (play2)
+与play命令不同，play2可以切换到不同的比特率流，而无需更改播放内容的时间线。服务器为客户端可以在play2中请求的所有支持比特率维护多个文件。
+
+从客户端到服务器的命令结构如下：
+```
+                 +--------------+----------+----------------------------------------+
+                 | Field Name   | Type     |            Description                 |
+                 +--------------+----------+----------------------------------------+
+                 | Command Name | String   | Name of the command, set to "play2".   |
+                 +--------------+----------+----------------------------------------+
+                 | Transaction  | Number   | Transaction ID set to 0.               |
+                 | ID           |          |                                        |
+                 +--------------+----------+----------------------------------------+
+                 | Command      | Null     | Command information does not exist.    |
+                 | Object       |          | Set to null type.                      |
+                 +--------------+----------+----------------------------------------+
+                 | Parameters   | Object   | An AMF encoded object whose properties |
+                 |              |          | are the public properties described    |
+                 |              |          | for the flash.net.NetStreamPlayOptions |
+                 |              |          | ActionScript object.                   |
+                 +--------------+----------+----------------------------------------+
+``` 
+NetStreamPlayOptions对象的公共属性在ActionScript 3语言参考[AS3]中有描述。
+
+```
+                     +--------------+                          +-------------+
+                     | Play2 Client |             |            | Server      |
+                     +--------+-----+             |            +------+------+
+                              |       Handshaking and Application     |
+                              |            connect done               |
+                              |                   |                   |
+                              |                   |                   |
+                              |                   |                   |
+                              |                   |                   |
+                     ---+---- |---- Command Message(createStream) --->|
+                 Create |     |                                       |
+                 Stream |     |                                       |
+                     ---+---- |<---- Command Message (_result) -------|
+                              |                                       |
+                     ---+---- |------ Command Message (play) -------->|
+                        |     |                                       |
+                        |     |<------------ SetChunkSize ------------|
+                        |     |                                       |
+                        |     |<--- UserControl (StreamIsRecorded)----|
+                   Play |     |                                       |
+                        |     |<------- UserControl (StreamBegin)-----|
+                        |     |                                       |
+                        |     |<--Command Message(onStatus-playstart)-|
+                        |     |                                       |
+                        |     |<---------- Audio Message -------------|
+                        |     |                                       |
+                        |     |<---------- Video Message -------------|
+                        |     |                                       |
+                              |                                       |
+                     ---+---- |-------- Command Message(play2) ------>|
+                        |     |                                       |
+                        |     |<------- Audio Message (new rate) -----|
+                  Play2 |     |                                       |
+                        |     |<------- Video Message (new rate) -----|
+                        |     |                 |                     |
+                        |     |                 |                     |
+                        |  Keep receiving audio and video stream till finishes
+                                                |
+                             Message flow in the play2 command
+```
+
+#### 删除流(deleteStream)
+NetStream在NetStream对象被销毁时发送deleteStream命令。
+
+从客户端到服务器的命令结构如下：
+```
+                 +--------------+----------+----------------------------------------+
+                 | Field Name   | Type     |             Description                |
+                 +--------------+----------+----------------------------------------+
+                 | Command Name | String   | Name of the command, set to            |
+                 |              |          | "deleteStream".                        |
+                 +--------------+----------+----------------------------------------+
+                 | Transaction  | Number   | Transaction ID set to 0.               |
+                 | ID           |          |                                        |
+                 +--------------+----------+----------------------------------------+
+                 | Command      | Null     | Command information object does not    |
+                 | Object       |          | exist. Set to null type.               |
+                 +--------------+----------+----------------------------------------+
+                 | Stream ID    | Number   | The ID of the stream that is destroyed |
+                 |              |          | on the server.                         |
+                 +--------------+----------+----------------------------------------+
+```
+服务器不发送任何响应。
+
+#### 接受音频(receiveAudio)
+NetStream发送receiveAudio消息，通知服务器是否向客户端发送音频。
+
+从客户端到服务器的命令结构如下：
+```
+                 +--------------+----------+----------------------------------------+
+                 | Field Name   | Type     |             Description                |
+                 +--------------+----------+----------------------------------------+
+                 | Command Name | String   | Name of the command, set to            |
+                 |              |          | "receiveAudio".                        |
+                 +--------------+----------+----------------------------------------+
+                 | Transaction  | Number   | Transaction ID set to 0.               |
+                 | ID           |          |                                        |
+                 +--------------+----------+----------------------------------------+
+                 | Command      | Null     | Command information object does not    |
+                 | Object       |          | exist. Set to null type.               | 
+                 +--------------+----------+----------------------------------------+
+                 | Bool Flag    | Boolean  | true or false to indicate whether to   |
+                 |              |          | receive audio or not.                  |
+                 +--------------+----------+----------------------------------------+
+```
+
 
 
 
